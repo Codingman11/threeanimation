@@ -1,0 +1,114 @@
+import * as THREE from "/build/three.module.js";
+import { OrbitControls } from "/jsm/controls/OrbitControls.js";
+var container;
+var camera, scene, renderer, pointLight;
+
+container = document.createElement("div");
+document.body.appendChild(container);
+
+const mouse = new THREE.Vector2();
+const raycaster = new THREE.Raycaster();
+mouse.x = 100000;
+mouse.y = 100000;
+
+camera = new THREE.PerspectiveCamera(
+  50,
+  window.innerWidth / window.innerHeight,
+  1,
+  5000
+);
+camera.position.z = 2000;
+
+//cubemap
+const path = "textures/";
+const format = ".jpg";
+const urls = [
+  path + "freskot-small_r" + format,
+  path + "freskot-small_l" + format,
+  path + "freskot-small_u" + format,
+  path + "freskot-small_d" + format,
+  path + "freskot-small_f" + format,
+  path + "freskot-small_b" + format,
+];
+
+const reflectionCube = new THREE.CubeTextureLoader().load(urls);
+const refractionCube = new THREE.CubeTextureLoader().load(urls);
+refractionCube.mapping = THREE.CubeRefractionMapping;
+
+scene = new THREE.Scene();
+scene.background = reflectionCube;
+
+//lights
+const ambient = new THREE.AmbientLight(0xffffff);
+scene.add(ambient);
+
+pointLight = new THREE.PointLight(0xffffff, 2);
+scene.add(pointLight);
+
+const scene2 = new THREE.Scene();
+
+const geometry2 = new THREE.SphereGeometry(2, 32, 32);
+const material2 = new THREE.MeshPhongMaterial({
+  color: 0x00ff00,
+});
+
+const videodome = new THREE.Mesh(geometry2, material2);
+scene2.add(videodome);
+
+//renderer
+renderer = new THREE.WebGLRenderer();
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+container.appendChild(renderer.domElement);
+
+//controls
+var controls = new OrbitControls(camera, renderer.domElement);
+controls.enableZoom = false;
+controls.enablePan = false;
+controls.minPolarAngle = Math.PI / 4;
+controls.maxPolarAngle = Math.PI / 1.5;
+
+function onMouseMove(event) {
+  // calculate mouse position in normalized device coordinates
+  // (-1 to +1) for both components
+
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+  console.log("Logging X with pixels from left corner: " + event.clientX);
+  console.log("Normalized version:" + mouse.x);
+}
+
+window.addEventListener("mousemove", onMouseMove, false);
+window.addEventListener("resize", onWindowResize, false);
+
+window.addEventListener("resize", onWindowResize);
+
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  videodome.rotation.x += 0.01;
+  videodome.rotation.y += 0.01;
+
+  // update the picking ray with the camera and mouse position
+  raycaster.setFromCamera(mouse, camera);
+
+  // calculate objects intersecting the picking ray
+  const intersects = raycaster.intersectObjects(scene.children);
+
+  for (let i = 0; i < intersects.length; i++) {
+    console.log("here");
+    intersects[i].object.material.color.set(0xff0000);
+  }
+
+  renderer.render(scene2, camera);
+
+  renderer.render(scene, camera);
+}
+animate();
